@@ -7,8 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -37,8 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -63,8 +59,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
       - name: Builder image
         run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
@@ -85,8 +79,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
       - name: Builder image
         run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
@@ -103,147 +95,10 @@ jobs:
         with:
           name: electrum-${{ github.sha }}-source-only-tarball
 
-  android-qml-arm64-v8a:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
-      - name: Free Disk Space (Ubuntu)
-        uses: gruve-p/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: true
-
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          docker-images: true
-          codeql-images: true
-          large-packages: true
-          swap-storage: true
-      - name: Builder image
-        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
-      - name: Compile Android apk
-        env:
-           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
-        run: |
-          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
-          mkdir "${TMP_KEYSTORE_FILE_PATH}"
-          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
-          sudo mkdir --parents /.buildozer/.gradle
-          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml arm64-v8a release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-arm64-v8a
-          path: dist/*.apk
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-arm64-v8a
-
-  android-qml-armeabi-v7a:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
-      - name: Free Disk Space (Ubuntu)
-        uses: gruve-p/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: true
-
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          docker-images: true
-          codeql-images: true
-          large-packages: true
-          swap-storage: true
-      - name: Builder image
-        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
-      - name: Compile Android apk
-        env:
-           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
-        run: |
-          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
-          mkdir "${TMP_KEYSTORE_FILE_PATH}"
-          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
-          sudo mkdir --parents /.buildozer/.gradle
-          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml armeabi-v7a release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-armeabi-v7a
-          path: dist/*.apk
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-armeabi-v7a
-
-  android-qml-x86_64:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
-      - name: Free Disk Space (Ubuntu)
-        uses: gruve-p/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: true
-
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          docker-images: true
-          codeql-images: true
-          large-packages: true
-          swap-storage: true
-      - name: Builder image
-        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
-      - name: Compile Android apk
-        env:
-           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
-        run: |
-          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
-          mkdir "${TMP_KEYSTORE_FILE_PATH}"
-          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
-          sudo mkdir --parents /.buildozer/.gradle
-          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml x86_64 release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-x86_64
-          path: dist/*.apk
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-android-x86_64
-
   macos:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
-        with:
-           fetch-depth: 0  # Добавьте эту строку для полного клонирования
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
