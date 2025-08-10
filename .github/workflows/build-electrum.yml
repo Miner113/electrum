@@ -1,0 +1,124 @@
+name: Build Electrum Wallet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libsecp256k1-dev \
+          libzbar-dev \
+          libssl-dev \
+          gettext \
+          zlib1g-dev
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r contrib/requirements/requirements.txt
+        pip install -r contrib/requirements/requirements-hw.txt
+        pip install pyinstaller==5.13.0
+        
+    - name: Build Linux binaries
+      run: |
+        ./contrib/make_packages
+        ./contrib/make_locale
+        PYTHONHASHSEED=0 pyinstaller --clean -y contrib/build-linux/electrum.spec
+        
+    - name: Archive Linux build
+      uses: actions/upload-artifact@v4
+      with:
+        name: electrum-linux
+        path: dist/electrum
+        retention-days: 3
+
+  build-windows:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r contrib/requirements/requirements.txt
+        pip install -r contrib/requirements/requirements-hw.txt
+        pip install pyinstaller==5.13.0
+        
+    - name: Build Windows binaries
+      run: |
+        python contrib/make_packages
+        python contrib/make_locale
+        pyinstaller --clean -y contrib/build-wine/electrum.spec
+        
+    - name: Archive Windows build
+      uses: actions/upload-artifact@v4
+      with:
+        name: electrum-windows
+        path: dist/electrum
+        retention-days: 3
+
+  build-macos:
+    runs-on: macos-13
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install macOS dependencies
+      run: |
+        brew update
+        brew install libusb
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r contrib/requirements/requirements.txt
+        pip install -r contrib/requirements/requirements-hw.txt
+        pip install pyinstaller==5.13.0
+        
+    - name: Build macOS binaries
+      run: |
+        ./contrib/make_packages
+        ./contrib/make_locale
+        PYTHONHASHSEED=0 pyinstaller --clean -y contrib/build-osx/electrum.spec
+        
+    - name: Archive macOS build
+      uses: actions/upload-artifact@v4
+      with:
+        name: electrum-macos
+        path: dist/electrum
+        retention-days: 3
