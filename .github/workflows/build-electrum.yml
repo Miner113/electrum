@@ -13,6 +13,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12.10"
+      - name: Prepare directories
+        run: |
+          mkdir -p contrib/build-wine/dist
+          chmod -R 777 contrib/build-wine/dist
       - name: Builder image
         env:
           TARGET_OS: Windows
@@ -23,8 +27,10 @@ jobs:
             --name electrum-wine-builder-cont \
             -v $PWD:/opt/wine64/drive_c/electrum \
             -v $PWD/.git:/opt/wine64/drive_c/electrum/.git:ro \
+            -v $PWD/contrib/build-wine/dist:/opt/wine64/drive_c/electrum/contrib/build-wine/dist \
             --rm \
             --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
+            --user $(id -u):$(id -g) \
             electrum-wine-builder-img \
             ./make_win.sh
       - name: Upload Artifact
@@ -43,6 +49,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12.10"
+      - name: Prepare directories
+        run: |
+          mkdir -p dist
+          chmod -R 777 dist
       - name: Builder image
         run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
       - name: Compile Linux AppImage
@@ -51,8 +61,10 @@ jobs:
             --name electrum-appimage-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
+            -v $PWD/dist:/opt/electrum/dist \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/appimage \
+            --user $(id -u):$(id -g) \
             electrum-appimage-builder-img \
             ./make_appimage.sh
       - name: Upload Artifact
@@ -67,6 +79,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Prepare directories
+        run: |
+          mkdir -p dist
+          chmod -R 777 dist
       - name: Builder image
         run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
@@ -75,8 +91,10 @@ jobs:
             --name electrum-sdist-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
+            -v $PWD/dist:/opt/electrum/dist \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/sdist \
+            --user $(id -u):$(id -g) \
             electrum-sdist-builder-img \
             ./make_sdist.sh
       - name: Upload Artifact
@@ -91,10 +109,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Verify git repository
+      - name: Prepare directories
         run: |
-          ls -la .git
-          git log -1 --oneline
+          mkdir -p dist build
+          chmod -R 777 dist build
       - name: Builder image
         run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
       - name: Compile source tarball
@@ -103,8 +121,11 @@ jobs:
             --name electrum-source-only-tarball-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
+            -v $PWD/dist:/opt/electrum/dist \
+            -v $PWD/build:/opt/electrum/build \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/sdist \
+            --user $(id -u):$(id -g) \
             --env OMIT_UNCLEAN_FILES=1 \
             electrum-source-only-tarball-builder-img \
             sh -c "git config --global --add safe.directory /opt/electrum && ./make_sdist.sh"
@@ -127,6 +148,10 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "14.1.0"
+      - name: Prepare directories
+        run: |
+          mkdir -p dist
+          chmod -R 777 dist
       - name: Install create-dmg
         run: brew install create-dmg
       - name: Build macOS package
@@ -142,9 +167,10 @@ jobs:
             --hide-extension "Electrum-GRS.app" \
             --app-drop-link 600 185 \
             dist/Electrum-GRS-unsigned.dmg \
-            dist/Electrum-GRS.app
+            dist/Electrum-GRS.app || \
+          hdiutil create -fs HFS+ -srcfolder dist/Electrum-GRS.app -volname "Electrum-GRS" dist/Electrum-GRS-unsigned.dmg
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-macos
-          path: dist/Electrum-unsigned.dmg
+          path: dist/Electrum-GRS-unsigned.dmg
