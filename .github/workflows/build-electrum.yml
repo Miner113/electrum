@@ -13,7 +13,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-      
+      with:
+        submodules: recursive
+        
     - name: Build Windows installer
       uses: docker/build-push-action@v5
       with:
@@ -24,6 +26,7 @@ jobs:
     - name: Run Windows build script
       run: |
         docker run --rm -v $PWD:/opt/wine64/drive_c/electrum \
+          -v $PWD/.git:/opt/wine64/drive_c/electrum/.git \
           -e CIRRUS_TASK_NAME=build-windows \
           electrum-wine-builder \
           /bin/bash -c "cd /opt/wine64/drive_c/electrum/contrib/build-wine && ./make_win.sh"
@@ -38,7 +41,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-      
+      with:
+        submodules: recursive
+        
     - name: Build AppImage builder
       uses: docker/build-push-action@v5
       with:
@@ -49,6 +54,7 @@ jobs:
     - name: Run AppImage build script
       run: |
         docker run --rm -v $PWD:/opt/electrum \
+          -v $PWD/.git:/opt/electrum/.git \
           electrum-appimage-builder \
           /bin/bash -c "cd /opt/electrum && ./contrib/build-linux/appimage/make_appimage.sh"
           
@@ -57,27 +63,4 @@ jobs:
         name: electrum-appimage
         path: dist/*.AppImage
 
-  build-android:
-    name: "Build Android (Docker)"
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-      
-    - name: Build Android builder
-      uses: docker/build-push-action@v5
-      with:
-        context: ./contrib/android
-        tags: electrum-android-builder
-        load: true
-        
-    - name: Run Android build script
-      run: |
-        docker run --rm -v $PWD:/opt/electrum \
-          -e APK_ARCH=arm64-v8a \
-          electrum-android-builder \
-          /bin/bash -c "cd /opt/electrum && ./contrib/android/make_apk.sh qml arm64-v8a debug"
-          
-    - uses: actions/upload-artifact@v4
-      with:
-        name: electrum-android
-        path: dist/*.apk
+ 
