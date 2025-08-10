@@ -7,140 +7,93 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12.10"
-      - name: Prepare directories
-        run: |
-          mkdir -p contrib/build-wine/dist
-          sudo chown -R $USER:$USER .
-          chmod -R 777 .
+          python-version: 3.12.10
       - name: Builder image
         env:
           TARGET_OS: Windows
-        run: docker build -t electrum-wine-builder-img ./contrib/build-wine/
+        run: docker build -t electrum-grs-wine-builder-img ./contrib/build-wine/
       - name: Compile Windows binary
-        run: |
-          docker run \
-            --name electrum-wine-builder-cont \
-            -v $PWD:/opt/wine64/drive_c/electrum \
-            -v $PWD/.git:/opt/wine64/drive_c/electrum/.git:ro \
-            --rm \
-            --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
-            --user root \
-            electrum-wine-builder-img \
-            sh -c "chmod -R 777 /opt/wine64/drive_c/electrum && ./make_win.sh"
-      - name: Fix permissions
-        run: sudo chown -R $USER:$USER .
+        env:
+          TARGET_OS: Windows
+        run: docker run --name electrum-grs-wine-builder-cont -v $PWD:/opt/wine64/drive_c/electrum-grs --rm --workdir /opt/wine64/drive_c/electrum-grs/contrib/build-wine electrum-grs-wine-builder-img ./make_win.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electrum-${{ github.sha }}-windows
+          name: electrum-grs-${{ github.sha }}-windows
           path: contrib/build-wine/dist/*.exe
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-grs-${{ github.sha }}-windows
 
   appimage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12.10"
-      - name: Prepare directories
-        run: |
-          mkdir -p dist
-          sudo chown -R $USER:$USER .
-          chmod -R 777 .
+          python-version: 3.12.10
       - name: Builder image
-        run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
+        run: docker build -t electrum-grs-appimage-builder-img ./contrib/build-linux/appimage/
       - name: Compile Linux AppImage
-        run: |
-          docker run \
-            --name electrum-appimage-builder-cont \
-            -v $PWD:/opt/electrum \
-            -v $PWD/.git:/opt/electrum/.git:ro \
-            --rm \
-            --workdir /opt/electrum/contrib/build-linux/appimage \
-            --user root \
-            electrum-appimage-builder-img \
-            sh -c "chmod -R 777 /opt/electrum && ./make_appimage.sh"
-      - name: Fix permissions
-        run: sudo chown -R $USER:$USER .
+        run: docker run --name electrum-grs-appimage-builder-cont -v $PWD:/opt/electrum-grs --rm --workdir /opt/electrum-grs/contrib/build-linux/appimage electrum-grs-appimage-builder-img ./make_appimage.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electrum-${{ github.sha }}-appimage
+          name: electrum-grs-${{ github.sha }}-appimage
           path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-grs-${{ github.sha }}-appimage
 
   tarball:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Prepare directories
-        run: |
-          mkdir -p dist
-          sudo chown -R $USER:$USER .
-          chmod -R 777 .
       - name: Builder image
-        run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
+        run: docker build -t electrum-grs-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
-        run: |
-          docker run \
-            --name electrum-sdist-builder-cont \
-            -v $PWD:/opt/electrum \
-            -v $PWD/.git:/opt/electrum/.git:ro \
-            --rm \
-            --workdir /opt/electrum/contrib/build-linux/sdist \
-            --user root \
-            electrum-sdist-builder-img \
-            sh -c "chmod -R 777 /opt/electrum && ./make_sdist.sh"
-      - name: Fix permissions
-        run: sudo chown -R $USER:$USER .
+        run: docker run --name electrum-grs-sdist-builder-cont -v $PWD:/opt/electrum-grs --rm --workdir /opt/electrum-grs/contrib/build-linux/sdist electrum-grs-sdist-builder-img ./make_sdist.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electrum-${{ github.sha }}-tarball
+          name: electrum-grs-${{ github.sha }}-tarball
           path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-grs-${{ github.sha }}-tarball
 
   source-only-tarball:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Prepare directories
-        run: |
-          mkdir -p dist build
-          sudo chown -R $USER:$USER .
-          chmod -R 777 .
       - name: Builder image
-        run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
-      - name: Compile source tarball
-        run: |
-          docker run \
-            --name electrum-source-only-tarball-builder-cont \
-            -v $PWD:/opt/electrum \
-            -v $PWD/.git:/opt/electrum/.git:ro \
-            --rm \
-            --workdir /opt/electrum/contrib/build-linux/sdist \
-            --user root \
-            --env OMIT_UNCLEAN_FILES=1 \
-            electrum-source-only-tarball-builder-img \
-            sh -c "chmod -R 777 /opt/electrum && ./make_sdist.sh"
-      - name: Fix permissions
-        run: sudo chown -R $USER:$USER .
+        run: docker build -t electrum-grs-source-only-tarball-builder-img ./contrib/build-linux/sdist/
+      - name: Compile Linux tarball
+        run: docker run --name electrum-grs-source-only-tarball-builder-cont -v $PWD:/opt/electrum-grs --rm --workdir /opt/electrum-grs/contrib/build-linux/sdist --env OMIT_UNCLEAN_FILES=1 electrum-grs-source-only-tarball-builder-img ./make_sdist.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electrum-${{ github.sha }}-source-only-tarball
+          name: electrum-grs-${{ github.sha }}-source-only-tarball
           path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-grs-${{ github.sha }}-source-only-tarball
 
   macos:
     runs-on: macos-13
@@ -158,14 +111,12 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p dist
-          sudo chown -R $USER:$USER .
-          chmod -R 777 .
+          chmod -R 777 dist
       - name: Install create-dmg
         run: brew install create-dmg
       - name: Build macOS package
         run: |
           ./contrib/osx/make_osx.sh
-          sudo chown -R $USER:$USER dist/
           create-dmg \
             --volname "Electrum-GRS" \
             --background ./contrib/osx/background.tiff \
@@ -178,8 +129,6 @@ jobs:
             dist/Electrum-GRS-unsigned.dmg \
             dist/Electrum-GRS.app || \
           hdiutil create -fs HFS+ -srcfolder dist/Electrum-GRS.app -volname "Electrum-GRS" dist/Electrum-GRS-unsigned.dmg
-      - name: Fix permissions
-        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
