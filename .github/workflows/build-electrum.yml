@@ -7,7 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+        with:
+          fetch-depth: 0  # Добавлено для полного клонирования
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12.10
@@ -16,90 +18,105 @@ jobs:
           TARGET_OS: Windows
         run: docker build -t electrum-wine-builder-img ./contrib/build-wine/
       - name: Compile Windows binary
-        env:
-          TARGET_OS: Windows
-        run: docker run --name electrum-wine-builder-cont -v $PWD:/opt/wine64/drive_c/electrum --rm --workdir /opt/wine64/drive_c/electrum/contrib/build-wine electrum-wine-builder-img ./make_win.sh
+        run: |
+          docker run \
+            --name electrum-wine-builder-cont \
+            -v $PWD:/opt/wine64/drive_c/electrum \
+            -v $PWD/.git:/opt/wine64/drive_c/electrum/.git:ro \
+            --rm \
+            --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
+            electrum-wine-builder-img \
+            ./make_win.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-windows
           path: contrib/build-wine/dist/*.exe
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-windows
 
   appimage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+        with:
+          fetch-depth: 0  # Добавлено для полного клонирования
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12.10
       - name: Builder image
         run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
       - name: Compile Linux AppImage
-        run: docker run --name electrum-appimage-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/appimage electrum-appimage-builder-img ./make_appimage.sh
+        run: |
+          docker run \
+            --name electrum-appimage-builder-cont \
+            -v $PWD:/opt/electrum \
+            -v $PWD/.git:/opt/electrum/.git:ro \
+            --rm \
+            --workdir /opt/electrum/contrib/build-linux/appimage \
+            electrum-appimage-builder-img \
+            ./make_appimage.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-appimage
           path: dist/*.AppImage
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-appimage
 
   tarball:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Добавлено для полного клонирования
       - name: Builder image
         run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
-        run: docker run --name electrum-sdist-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/sdist electrum-sdist-builder-img ./make_sdist.sh
+        run: |
+          docker run \
+            --name electrum-sdist-builder-cont \
+            -v $PWD:/opt/electrum \
+            -v $PWD/.git:/opt/electrum/.git:ro \
+            --rm \
+            --workdir /opt/electrum/contrib/build-linux/sdist \
+            electrum-sdist-builder-img \
+            ./make_sdist.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-tarball
           path: dist/*.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-tarball
 
   source-only-tarball:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Добавлено для полного клонирования
       - name: Builder image
         run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
-        run: docker run --name electrum-source-only-tarball-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/sdist --env OMIT_UNCLEAN_FILES=1 electrum-source-only-tarball-builder-img ./make_sdist.sh
+        run: |
+          docker run \
+            --name electrum-source-only-tarball-builder-cont \
+            -v $PWD:/opt/electrum \
+            -v $PWD/.git:/opt/electrum/.git:ro \
+            --rm \
+            --workdir /opt/electrum/contrib/build-linux/sdist \
+            --env OMIT_UNCLEAN_FILES=1 \
+            electrum-source-only-tarball-builder-img \
+            ./make_sdist.sh
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-source-only-tarball
           path: dist/*.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-source-only-tarball
 
   macos:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+        with:
+          fetch-depth: 0  # Добавлено для полного клонирования
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.12.10
@@ -113,9 +130,3 @@ jobs:
         with:
           name: electrum-${{ github.sha }}-macos
           path: dist/*.dmg
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-macos
