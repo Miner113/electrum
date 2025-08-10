@@ -8,11 +8,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Добавлено для полного клонирования
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12.10
+          python-version: "3.12.10"
       - name: Builder image
         env:
           TARGET_OS: Windows
@@ -38,11 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Добавлено для полного клонирования
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12.10
+          python-version: "3.12.10"
       - name: Builder image
         run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
       - name: Compile Linux AppImage
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Добавлено для полного клонирования
+          fetch-depth: 0
       - name: Builder image
         run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
@@ -86,65 +86,65 @@ jobs:
           path: dist/*.tar.gz
 
   source-only-tarball:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Полная история git
-        path: 'src'     # Отдельная директория
-
-    - name: Verify git repository
-      run: |
-        ls -la src/.git
-        git -C src log -1 --oneline
-
-    - name: Builder image
-      run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
-
-    - name: Prepare git config
-      run: |
-        # Копируем git конфиг для использования в контейнере
-        mkdir -p src/.git-container
-        cp -r src/.git/* src/.git-container/
-        chmod -R a+rwx src/.git-container
-
-    - name: Compile Linux tarball
-      working-directory: ./src
-      run: |
-        docker run \
-          --name electrum-source-only-tarball-builder-cont \
-          -v $PWD:/opt/electrum \
-          -v $PWD/.git-container:/opt/electrum/.git:ro \
-          -v $HOME/.gitconfig:/etc/gitconfig:ro \
-          --rm \
-          --workdir /opt/electrum/contrib/build-linux/sdist \
-          --env OMIT_UNCLEAN_FILES=1 \
-          electrum-source-only-tarball-builder-img \
-          sh -c "git config --global --add safe.directory /opt/electrum && ./make_sdist.sh"
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: electrum-${{ github.sha }}-source-only-tarball
-        path: src/dist/*.tar.gz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify git repository
+        run: |
+          ls -la .git
+          git log -1 --oneline
+      - name: Builder image
+        run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
+      - name: Compile source tarball
+        run: |
+          docker run \
+            --name electrum-source-only-tarball-builder-cont \
+            -v $PWD:/opt/electrum \
+            -v $PWD/.git:/opt/electrum/.git:ro \
+            --rm \
+            --workdir /opt/electrum/contrib/build-linux/sdist \
+            --env OMIT_UNCLEAN_FILES=1 \
+            electrum-source-only-tarball-builder-img \
+            sh -c "git config --global --add safe.directory /opt/electrum && ./make_sdist.sh"
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-source-only-tarball
+          path: dist/*.tar.gz
 
   macos:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Добавлено для полного клонирования
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12.10
+          python-version: "3.12.10"
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 14.1.0
-      - name: Compile OSX dmg
-        run: ./contrib/osx/make_osx.sh
+          xcode-version: "14.1.0"
+      - name: Install create-dmg
+        run: brew install create-dmg
+      - name: Build macOS package
+        run: |
+          ./contrib/osx/make_osx.sh
+          create-dmg \
+            --volname "Electrum-GRS" \
+            --background ./contrib/osx/background.tiff \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "Electrum-GRS.app" 200 190 \
+            --hide-extension "Electrum-GRS.app" \
+            --app-drop-link 600 185 \
+            dist/Electrum-GRS-unsigned.dmg \
+            dist/Electrum-GRS.app
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: electrum-${{ github.sha }}-macos
-          path: dist/*.dmg
+          path: dist/Electrum-unsigned.dmg
