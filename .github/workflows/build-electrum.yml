@@ -1,4 +1,4 @@
-name: Build Electrum (Docker)
+name: Build Electrum AppImage
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-        fetch-depth: 0  # Полная git история
+        fetch-depth: 0
         
     - name: Build Docker image
       uses: docker/build-push-action@v5
@@ -22,23 +22,28 @@ jobs:
         tags: electrum-appimage-builder
         load: true
         
-    - name: Prepare build context
+    - name: Run build in container
       run: |
-        # Создаем временную директорию с полной git историей
+        # Создаем временный git bundle
+        git bundle create /tmp/electrum.bundle --all
+        
+        # Создаем временную директорию
         mkdir -p /tmp/electrum-build
-        git clone --depth 1 --no-single-branch file://$PWD /tmp/electrum-build
         cd /tmp/electrum-build
+        
+        # Клонируем из bundle
+        git clone --depth 1 file:///tmp/electrum.bundle .
         git submodule update --init --recursive
         
-    - name: Run AppImage build
-      run: |
-        docker run --rm -v /tmp/electrum-build:/opt/electrum \
+        # Запускаем сборку
+        docker run --rm \
+          -v /tmp/electrum-build:/opt/electrum \
           -v /tmp/electrum-build/.git:/opt/electrum/.git \
+          -v /tmp/electrum-build/.git/modules:/opt/electrum/.git/modules \
           electrum-appimage-builder \
           /bin/bash -c "cd /opt/electrum && ./contrib/build-linux/appimage/make_appimage.sh"
-          
-    - name: Copy artifacts
-      run: |
+        
+        # Копируем артефакты
         cp -r /tmp/electrum-build/dist $PWD/
         
     - uses: actions/upload-artifact@v4
