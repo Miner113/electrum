@@ -108,13 +108,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Prepare directories
+             fetch-depth: 0
+
+      - name: Prepare directories and git config
         run: |
-          mkdir -p dist build
-          chmod -R 777 dist build
+            mkdir -p dist build
+            chmod -R 777 dist build
+            # Создаем временный gitconfig с правильными правами
+            mkdir -p tmp_gitconfig
+            git config --global --add safe.directory /opt/electrum > tmp_gitconfig/.gitconfig
+            chmod 666 tmp_gitconfig/.gitconfig
+
       - name: Builder image
         run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
+
       - name: Compile source tarball
         run: |
           docker run \
@@ -123,17 +130,22 @@ jobs:
             -v $PWD/.git:/opt/electrum/.git:ro \
             -v $PWD/dist:/opt/electrum/dist \
             -v $PWD/build:/opt/electrum/build \
+            -v $PWD/tmp_gitconfig/.gitconfig:/etc/gitconfig \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/sdist \
             --user $(id -u):$(id -g) \
             --env OMIT_UNCLEAN_FILES=1 \
             electrum-source-only-tarball-builder-img \
-            sh -c "git config --global --add safe.directory /opt/electrum && ./make_sdist.sh"
+            ./make_sdist.sh
+
+      - name: Cleanup
+        run: rm -rf tmp_gitconfig
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: electrum-${{ github.sha }}-source-only-tarball
-          path: dist/*.tar.gz
+           name: electrum-${{ github.sha }}-source-only-tarball
+           path: dist/*.tar.gz
 
   macos:
     runs-on: macos-13
