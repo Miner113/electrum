@@ -16,7 +16,8 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p contrib/build-wine/dist
-          chmod -R 777 contrib/build-wine/dist
+          sudo chown -R $USER:$USER .
+          chmod -R 777 .
       - name: Builder image
         env:
           TARGET_OS: Windows
@@ -27,12 +28,13 @@ jobs:
             --name electrum-wine-builder-cont \
             -v $PWD:/opt/wine64/drive_c/electrum \
             -v $PWD/.git:/opt/wine64/drive_c/electrum/.git:ro \
-            -v $PWD/contrib/build-wine/dist:/opt/wine64/drive_c/electrum/contrib/build-wine/dist \
             --rm \
             --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
-            --user $(id -u):$(id -g) \
+            --user root \
             electrum-wine-builder-img \
-            ./make_win.sh
+            sh -c "chmod -R 777 /opt/wine64/drive_c/electrum && ./make_win.sh"
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -52,7 +54,8 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p dist
-          chmod -R 777 dist
+          sudo chown -R $USER:$USER .
+          chmod -R 777 .
       - name: Builder image
         run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
       - name: Compile Linux AppImage
@@ -61,12 +64,13 @@ jobs:
             --name electrum-appimage-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
-            -v $PWD/dist:/opt/electrum/dist \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/appimage \
-            --user $(id -u):$(id -g) \
+            --user root \
             electrum-appimage-builder-img \
-            ./make_appimage.sh
+            sh -c "chmod -R 777 /opt/electrum && ./make_appimage.sh"
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -82,7 +86,8 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p dist
-          chmod -R 777 dist
+          sudo chown -R $USER:$USER .
+          chmod -R 777 .
       - name: Builder image
         run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
       - name: Compile Linux tarball
@@ -91,12 +96,13 @@ jobs:
             --name electrum-sdist-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
-            -v $PWD/dist:/opt/electrum/dist \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/sdist \
-            --user $(id -u):$(id -g) \
+            --user root \
             electrum-sdist-builder-img \
-            ./make_sdist.sh
+            sh -c "chmod -R 777 /opt/electrum && ./make_sdist.sh"
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -108,44 +114,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-             fetch-depth: 0
-
-      - name: Prepare directories and git config
+          fetch-depth: 0
+      - name: Prepare directories
         run: |
-            mkdir -p dist build
-            chmod -R 777 dist build
-            # Создаем временный gitconfig с правильными правами
-            mkdir -p tmp_gitconfig
-            git config --global --add safe.directory /opt/electrum > tmp_gitconfig/.gitconfig
-            chmod 666 tmp_gitconfig/.gitconfig
-
+          mkdir -p dist build
+          sudo chown -R $USER:$USER .
+          chmod -R 777 .
       - name: Builder image
         run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
-
       - name: Compile source tarball
         run: |
           docker run \
             --name electrum-source-only-tarball-builder-cont \
             -v $PWD:/opt/electrum \
             -v $PWD/.git:/opt/electrum/.git:ro \
-            -v $PWD/dist:/opt/electrum/dist \
-            -v $PWD/build:/opt/electrum/build \
-            -v $PWD/tmp_gitconfig/.gitconfig:/etc/gitconfig \
             --rm \
             --workdir /opt/electrum/contrib/build-linux/sdist \
-            --user $(id -u):$(id -g) \
+            --user root \
             --env OMIT_UNCLEAN_FILES=1 \
             electrum-source-only-tarball-builder-img \
-            ./make_sdist.sh
-
-      - name: Cleanup
-        run: rm -rf tmp_gitconfig
-
+            sh -c "chmod -R 777 /opt/electrum && ./make_sdist.sh"
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-           name: electrum-${{ github.sha }}-source-only-tarball
-           path: dist/*.tar.gz
+          name: electrum-${{ github.sha }}-source-only-tarball
+          path: dist/*.tar.gz
 
   macos:
     runs-on: macos-13
@@ -163,12 +158,14 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p dist
-          chmod -R 777 dist
+          sudo chown -R $USER:$USER .
+          chmod -R 777 .
       - name: Install create-dmg
         run: brew install create-dmg
       - name: Build macOS package
         run: |
           ./contrib/osx/make_osx.sh
+          sudo chown -R $USER:$USER dist/
           create-dmg \
             --volname "Electrum-GRS" \
             --background ./contrib/osx/background.tiff \
@@ -181,6 +178,8 @@ jobs:
             dist/Electrum-GRS-unsigned.dmg \
             dist/Electrum-GRS.app || \
           hdiutil create -fs HFS+ -srcfolder dist/Electrum-GRS.app -volname "Electrum-GRS" dist/Electrum-GRS-unsigned.dmg
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER .
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
