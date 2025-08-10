@@ -86,29 +86,47 @@ jobs:
           path: dist/*.tar.gz
 
   source-only-tarball:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Добавлено для полного клонирования
-      - name: Builder image
-        run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
-      - name: Compile Linux tarball
-        run: |
-          docker run \
-            --name electrum-source-only-tarball-builder-cont \
-            -v $PWD:/opt/electrum \
-            -v $PWD/.git:/opt/electrum/.git:ro \
-            --rm \
-            --workdir /opt/electrum/contrib/build-linux/sdist \
-            --env OMIT_UNCLEAN_FILES=1 \
-            electrum-source-only-tarball-builder-img \
-            ./make_sdist.sh
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-source-only-tarball
-          path: dist/*.tar.gz
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Полная история git
+        path: 'src'     # Отдельная директория
+
+    - name: Verify git repository
+      run: |
+        ls -la src/.git
+        git -C src log -1 --oneline
+
+    - name: Builder image
+      run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
+
+    - name: Prepare git config
+      run: |
+        # Копируем git конфиг для использования в контейнере
+        mkdir -p src/.git-container
+        cp -r src/.git/* src/.git-container/
+        chmod -R a+rwx src/.git-container
+
+    - name: Compile Linux tarball
+      working-directory: ./src
+      run: |
+        docker run \
+          --name electrum-source-only-tarball-builder-cont \
+          -v $PWD:/opt/electrum \
+          -v $PWD/.git-container:/opt/electrum/.git:ro \
+          -v $HOME/.gitconfig:/etc/gitconfig:ro \
+          --rm \
+          --workdir /opt/electrum/contrib/build-linux/sdist \
+          --env OMIT_UNCLEAN_FILES=1 \
+          electrum-source-only-tarball-builder-img \
+          sh -c "git config --global --add safe.directory /opt/electrum && ./make_sdist.sh"
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: electrum-${{ github.sha }}-source-only-tarball
+        path: src/dist/*.tar.gz
 
   macos:
     runs-on: macos-13
