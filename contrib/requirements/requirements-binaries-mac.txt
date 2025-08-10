@@ -3,5 +3,5 @@
 # PyQt6-Qt6==6.6.3 segfaults with "illegal hardware instruction"
 PyQt6<6.7
 PyQt6-Qt6<6.7,!=6.6.3
-
+qulacs==0.6.11
 cryptography>=2.6
