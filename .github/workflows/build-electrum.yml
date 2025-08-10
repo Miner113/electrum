@@ -1,4 +1,4 @@
-name: Build Electrum
+name: Build Electrum (Docker)
 
 on:
   push:
@@ -7,104 +7,76 @@ on:
   schedule:
     - cron: '30 2 * * *' # Nightly builds at 02:30 UTC
 
-env:
-  PYTHON_VERSION: '3.10'
-  PIP_VERSION: '23.3.1'
-  PYINSTALLER_VERSION: '6.0.0'
-
 jobs:
   build-windows:
-    name: "Build Windows"
-    runs-on: windows-2022
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: "Build Windows (Docker)"
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip==${{ env.PIP_VERSION }}
-        pip install -r contrib/requirements/requirements.txt
-        pip install -r contrib/requirements/requirements-hw.txt
-        pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-        
+      
     - name: Build Windows installer
-      run: |
-        python contrib/make_packages
-        python contrib/make_locale
-        pyinstaller --clean -y contrib/build-wine/electrum.spec
+      uses: docker/build-push-action@v5
+      with:
+        context: ./contrib/build-wine
+        tags: electrum-wine-builder
+        load: true
         
+    - name: Run Windows build script
+      run: |
+        docker run --rm -v $PWD:/opt/wine64/drive_c/electrum \
+          -e CIRRUS_TASK_NAME=build-windows \
+          electrum-wine-builder \
+          /bin/bash -c "cd /opt/wine64/drive_c/electrum/contrib/build-wine && ./make_win.sh"
+          
     - uses: actions/upload-artifact@v4
       with:
         name: electrum-windows
-        path: dist/electrum
+        path: contrib/build-wine/dist/*
 
   build-appimage:
-    name: "Build Linux AppImage"
+    name: "Build Linux AppImage (Docker)"
     runs-on: ubuntu-22.04
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+      
+    - name: Build AppImage builder
+      uses: docker/build-push-action@v5
       with:
-        python-version: ${{ env.PYTHON_VERSION }}
+        context: ./contrib/build-linux/appimage
+        tags: electrum-appimage-builder
+        load: true
         
-    - name: Install dependencies
+    - name: Run AppImage build script
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libsecp256k1-dev \
-          libzbar-dev \
-          libssl-dev \
-          gettext \
-          zlib1g-dev \
-          libgl1 \
-          libegl1 \
-          libxkbcommon0 \
-          libdbus-1-3
-        python -m pip install --upgrade pip==${{ env.PIP_VERSION }}
-        pip install -r contrib/requirements/requirements.txt
-        pip install -r contrib/requirements/requirements-hw.txt
-        pip install pyinstaller==${{ env.PYINSTALLER_VERSION }}
-        
-    - name: Build AppImage
-      run: |
-        ./contrib/make_packages
-        ./contrib/make_locale
-        ./contrib/build-linux/appimage/make_appimage.sh
-        
+        docker run --rm -v $PWD:/opt/electrum \
+          electrum-appimage-builder \
+          /bin/bash -c "cd /opt/electrum && ./contrib/build-linux/appimage/make_appimage.sh"
+          
     - uses: actions/upload-artifact@v4
       with:
         name: electrum-appimage
         path: dist/*.AppImage
 
   build-android:
-    name: "Build Android (arm64-v8a)"
+    name: "Build Android (Docker)"
     runs-on: ubuntu-22.04
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+      
+    - name: Build Android builder
+      uses: docker/build-push-action@v5
       with:
-        python-version: ${{ env.PYTHON_VERSION }}
+        context: ./contrib/android
+        tags: electrum-android-builder
+        load: true
         
-    - name: Install dependencies
+    - name: Run Android build script
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          zlib1g-dev \
-          openjdk-11-jdk \
-          android-sdk
-        python -m pip install --upgrade pip==${{ env.PIP_VERSION }}
-        pip install -r contrib/requirements/requirements.txt
-        pip install -r contrib/deterministic-build/requirements-android-build.txt
-        
-    - name: Build APK
-      run: |
-        ./contrib/android/make_apk qml arm64-v8a debug
-        
+        docker run --rm -v $PWD:/opt/electrum \
+          -e APK_ARCH=arm64-v8a \
+          electrum-android-builder \
+          /bin/bash -c "cd /opt/electrum && ./contrib/android/make_apk.sh qml arm64-v8a debug"
+          
     - uses: actions/upload-artifact@v4
       with:
         name: electrum-android
