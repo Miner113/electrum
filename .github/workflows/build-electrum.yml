@@ -5,16 +5,17 @@ on:
     branches: [master]
   workflow_dispatch:
   schedule:
-    - cron: '30 2 * * *' # Nightly builds at 02:30 UTC
+    - cron: '30 2 * * *'
 
 jobs:
   build-windows:
-    name: "Build Windows (Docker)"
+    name: "Build Windows"
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 0  # Получаем всю историю git
         
     - name: Build Windows installer
       uses: docker/build-push-action@v5
@@ -23,13 +24,20 @@ jobs:
         tags: electrum-wine-builder
         load: true
         
-    - name: Run Windows build script
+    - name: Run Windows build
       run: |
-        docker run --rm -v $PWD:/opt/wine64/drive_c/electrum \
-          -v $PWD/.git:/opt/wine64/drive_c/electrum/.git \
+        # Создаем временную копию с полной git историей
+        rm -rf /tmp/electrum-build
+        cp -r $PWD /tmp/electrum-build
+        cd /tmp/electrum-build
+        
+        docker run --rm -v /tmp/electrum-build:/opt/wine64/drive_c/electrum \
           -e CIRRUS_TASK_NAME=build-windows \
           electrum-wine-builder \
           /bin/bash -c "cd /opt/wine64/drive_c/electrum/contrib/build-wine && ./make_win.sh"
+        
+        # Копируем результаты обратно
+        cp -r /tmp/electrum-build/contrib/build-wine/dist $PWD/contrib/build-wine/
           
     - uses: actions/upload-artifact@v4
       with:
@@ -37,12 +45,13 @@ jobs:
         path: contrib/build-wine/dist/*
 
   build-appimage:
-    name: "Build Linux AppImage (Docker)"
+    name: "Build AppImage"
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 0
         
     - name: Build AppImage builder
       uses: docker/build-push-action@v5
@@ -51,16 +60,19 @@ jobs:
         tags: electrum-appimage-builder
         load: true
         
-    - name: Run AppImage build script
+    - name: Run AppImage build
       run: |
-        docker run --rm -v $PWD:/opt/electrum \
-          -v $PWD/.git:/opt/electrum/.git \
+        rm -rf /tmp/electrum-build
+        cp -r $PWD /tmp/electrum-build
+        cd /tmp/electrum-build
+        
+        docker run --rm -v /tmp/electrum-build:/opt/electrum \
           electrum-appimage-builder \
           /bin/bash -c "cd /opt/electrum && ./contrib/build-linux/appimage/make_appimage.sh"
+        
+        cp -r /tmp/electrum-build/dist $PWD/
           
     - uses: actions/upload-artifact@v4
       with:
         name: electrum-appimage
         path: dist/*.AppImage
-
- 
