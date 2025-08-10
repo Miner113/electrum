@@ -1,52 +1,250 @@
-name: Build Electrum AppImage
+name: CI
 
-on:
-  push:
-    branches: [master]
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
-  build-appimage:
-    name: "Build AppImage"
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.10
+      - name: Builder image
+        env:
+          TARGET_OS: Windows
+        run: docker build -t electrum-wine-builder-img ./contrib/build-wine/
+      - name: Compile Windows binary
+        env:
+          TARGET_OS: Windows
+        run: docker run --name electrum-wine-builder-cont -v $PWD:/opt/wine64/drive_c/electrum --rm --workdir /opt/wine64/drive_c/electrum/contrib/build-wine electrum-wine-builder-img ./make_win.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-windows
+          path: contrib/build-wine/dist/*.exe
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-windows
+
+  appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.10
+      - name: Builder image
+        run: docker build -t electrum-appimage-builder-img ./contrib/build-linux/appimage/
+      - name: Compile Linux AppImage
+        run: docker run --name electrum-appimage-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/appimage electrum-appimage-builder-img ./make_appimage.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-appimage
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-appimage
+
+  tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Builder image
+        run: docker build -t electrum-sdist-builder-img ./contrib/build-linux/sdist/
+      - name: Compile Linux tarball
+        run: docker run --name electrum-sdist-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/sdist electrum-sdist-builder-img ./make_sdist.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-tarball
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-tarball
+
+  source-only-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Builder image
+        run: docker build -t electrum-source-only-tarball-builder-img ./contrib/build-linux/sdist/
+      - name: Compile Linux tarball
+        run: docker run --name electrum-source-only-tarball-builder-cont -v $PWD:/opt/electrum --rm --workdir /opt/electrum/contrib/build-linux/sdist --env OMIT_UNCLEAN_FILES=1 electrum-source-only-tarball-builder-img ./make_sdist.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-source-only-tarball
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-source-only-tarball
+
+  android-qml-arm64-v8a:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
-        
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./contrib/build-linux/appimage
-        tags: electrum-appimage-builder
-        load: true
-        
-    - name: Run build in container
-      run: |
-        # Создаем временный git bundle
-        git bundle create /tmp/electrum.bundle --all
-        
-        # Создаем временную директорию
-        mkdir -p /tmp/electrum-build
-        cd /tmp/electrum-build
-        
-        # Клонируем из bundle
-        git clone --depth 1 file:///tmp/electrum.bundle .
-        git submodule update --init --recursive
-        
-        # Запускаем сборку
-        docker run --rm \
-          -v /tmp/electrum-build:/opt/electrum \
-          -v /tmp/electrum-build/.git:/opt/electrum/.git \
-          -v /tmp/electrum-build/.git/modules:/opt/electrum/.git/modules \
-          electrum-appimage-builder \
-          /bin/bash -c "cd /opt/electrum && ./contrib/build-linux/appimage/make_appimage.sh"
-        
-        # Копируем артефакты
-        cp -r /tmp/electrum-build/dist $PWD/
-        
-    - uses: actions/upload-artifact@v4
-      with:
-        name: electrum-appimage
-        path: dist/*.AppImage
+      - uses: actions/checkout@v4
+      - name: Free Disk Space (Ubuntu)
+        uses: gruve-p/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: true
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          codeql-images: true
+          large-packages: true
+          swap-storage: true
+      - name: Builder image
+        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
+      - name: Compile Android apk
+        env:
+           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
+        run: |
+          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
+          mkdir "${TMP_KEYSTORE_FILE_PATH}"
+          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
+          sudo mkdir --parents /.buildozer/.gradle
+          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml arm64-v8a release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-arm64-v8a
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-arm64-v8a
+
+  android-qml-armeabi-v7a:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free Disk Space (Ubuntu)
+        uses: gruve-p/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: true
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          codeql-images: true
+          large-packages: true
+          swap-storage: true
+      - name: Builder image
+        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
+      - name: Compile Android apk
+        env:
+           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
+        run: |
+          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
+          mkdir "${TMP_KEYSTORE_FILE_PATH}"
+          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
+          sudo mkdir --parents /.buildozer/.gradle
+          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml armeabi-v7a release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-armeabi-v7a
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-armeabi-v7a
+
+  android-qml-x86_64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free Disk Space (Ubuntu)
+        uses: gruve-p/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: true
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          codeql-images: true
+          large-packages: true
+          swap-storage: true
+      - name: Builder image
+        run: docker build -t electrum-android-builder-img --file contrib/android/Dockerfile .
+      - name: Compile Android apk
+        env:
+           ENCODED_STRING: ${{ secrets.ANDROID_SIGNING_KEY }}
+        run: |
+          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
+          mkdir "${TMP_KEYSTORE_FILE_PATH}"
+          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/electrumgrs.keystore
+          sudo mkdir --parents /.buildozer/.gradle
+          sudo docker run --name electrum-android-builder-cont -v $PWD:/home/user/wspace/electrum -v /.buildozer/.gradle:/home/user/.gradle -v $TMP_KEYSTORE_FILE_PATH:/root/.keystore --workdir /home/user/wspace/electrum electrum-android-builder-img ./contrib/android/make_apk.sh qml x86_64 release ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-x86_64
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-android-x86_64
+
+  macos:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.10
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 14.1.0
+      - name: Compile OSX dmg
+        run: ./contrib/osx/make_osx.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-macos
+          path: dist/*.dmg
+          if-no-files-found: error
+          retention-days: 7
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: electrum-${{ github.sha }}-macos
