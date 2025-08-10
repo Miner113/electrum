@@ -99,8 +99,8 @@ This creates both a folder named Electrum.app and the .dmg file (both unsigned).
 If you want the binaries codesigned for macOS and notarised by Apple's central server,
 also run the `sign_osx.sh` script:
 
-    CODESIGN_CERT="Developer ID Application: Electrum Technologies GmbH (L6P37P7P56)" \
-    APPLE_TEAM_ID="L6P37P7P56" \
+    CODESIGN_CERT="Developer ID Application: Groestlcoin Developers (A82F56PX3Q)" \
+    APPLE_TEAM_ID="A82F56PX3Q" \
     APPLE_ID_USER="me@email.com" \
     APPLE_ID_PASSWORD="1234" \
     ./contrib/osx/sign_osx.sh

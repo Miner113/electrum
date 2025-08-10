@@ -10,7 +10,7 @@
 
 ### 1. Check out the code from GitHub:
 ```
-$ git clone https://github.com/spesmilo/electrum.git
+$ git clone https://github.com/Groestlcoin/electrum.git
 $ cd electrum
 $ git submodule update --init
 ```
@@ -33,5 +33,5 @@ $ python3 -m pip install --user -e ".[gui,crypto]"
 
 ### 4. Run electrum:
 ```
-$ ./run_electrum
+$ ./run_electrum_grs
 ```
