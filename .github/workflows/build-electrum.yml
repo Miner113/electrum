@@ -119,4 +119,4 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: electrum-grs-${{ github.sha }}-macos
+          name: electrum-${{ github.sha }}-macos

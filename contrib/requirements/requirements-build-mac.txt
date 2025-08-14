@@ -1,7 +1,8 @@
 pip
 setuptools
 wheel
-
+maturin==1.9.3
+qulacs==0.6.11
 # needed by pyinstaller:
 # fixme: ugly to have to duplicate this here from upstream
 macholib>=1.8
@@ -14,17 +15,4 @@ packaging>=22.0
 # The pinned Cython must be installed before hidapi is built;
 # otherwise when installing hidapi, pip just downloads the latest Cython.
 # see https://github.com/spesmilo/electrum/issues/5859
-Cython==0.29.30
-
-# Build tools
-sip==6.8.3
-maturin==1.9.3
-pyqt-builder==1.15.0
-
-# Specialized dependencies
-qulacs==0.6.11
-cryptography>=2.6
-
-# Additional macOS build requirements
-pyobjc-core==9.2
-pyobjc-framework-Cocoa==9.2
+Cython>=0.27
