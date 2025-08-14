@@ -69,6 +69,8 @@ export CFLAGS="-g0"
 # Do not build universal binaries. The default on macos 11+ and xcode 12+ is "-arch arm64 -arch x86_64"
 # but with that e.g. "hid.cpython-310-darwin.so" is not reproducible as built by clang.
 export ARCHFLAGS="-arch x86_64"
+info "Installing mkdir plugins..."
+mkdir -p "dist/Electrum.app/Contents/Frameworks/electrum/plugins"
 
 info "Installing build dependencies"
 # note: re pip installing from PyPI,
