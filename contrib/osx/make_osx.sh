@@ -77,10 +77,10 @@ info "Installing build dependencies"
 #       - the whole of "requirements-build-base.txt", which includes pip and friends, as it also includes "wheel",
 #         and I am not quite sure how to break the circular dependence there (I guess we could introduce
 #         "requirements-build-base-base.txt" with just wheel in it...)
-info "Installing maturin..."
+echo "Installing maturin (or sip)..."
 python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-location \
-    --cache-dir "$PIP_CACHE_DIR" maturin==1.9.3 \
-    || fail "Could not install maturin"
+    --cache-dir "$PIP_CACHE_DIR" maturin==1.9.3 sip==6.8.3 \
+    || fail "Could not install maturin (or sip)"
 python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-location \
     --cache-dir "$PIP_CACHE_DIR" -Ir ./contrib/deterministic-build/requirements-build-base.txt \
     || fail "Could not install build dependencies (base)"
