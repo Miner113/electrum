@@ -42,12 +42,11 @@ datas = [
     (f"{PROJECT_ROOT}/{PYPKG}/wordlist/slip39.txt", f"{PYPKG}/wordlist"),
     (f"{PROJECT_ROOT}/{PYPKG}/chains", f"{PYPKG}/chains"),
     (f"{PROJECT_ROOT}/{PYPKG}/locale", f"{PYPKG}/locale"),
-    (f"{PROJECT_ROOT}/{PYPKG}/plugins", f"electrum/plugins"),
     (f"{PROJECT_ROOT}/{PYPKG}/gui/icons", f"{PYPKG}/gui/icons"),
     (f"{PROJECT_ROOT}/{PYPKG}/gui/fonts", f"{PYPKG}/gui/fonts"),
 ]
 datas += collect_data_files(f"{PYPKG}.plugins")
-datas += collect_data_files('trezorlib')  # TODO is this needed? and same question for other hww libs
+datas += collect_data_files('trezorlib')
 datas += collect_data_files('safetlib')
 datas += collect_data_files('ckcc')
 datas += collect_data_files('bitbox02')
