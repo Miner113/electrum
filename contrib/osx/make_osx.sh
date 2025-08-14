@@ -32,6 +32,8 @@ git -C "$PROJECT_ROOT" rev-parse 2>/dev/null || fail "Building outside a git clo
 which brew > /dev/null 2>&1 || fail "Please install brew from https://brew.sh/ to continue"
 which xcodebuild > /dev/null 2>&1 || fail "Please install xcode command line tools to continue"
 
+info "install boost"
+brew install boost
 
 info "Installing Python $PYTHON_VERSION"
 PKG_FILE="python-${PYTHON_VERSION}-macos11.pkg"
