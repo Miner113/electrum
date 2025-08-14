@@ -6,21 +6,18 @@ from typing import TYPE_CHECKING
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_dynamic_libs, copy_metadata
 
 if TYPE_CHECKING:
-    from PyInstaller.building.build_main import Analysis, PYZ, EXE, BUNDLE
+    from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
 
 
-PACKAGE_NAME='Electrum.app'
-PYPKG='electrum'
-MAIN_SCRIPT='run_electrum'
-PROJECT_ROOT = os.path.abspath(".")
-ICONS_FILE=f"{PROJECT_ROOT}/{PYPKG}/gui/icons/electrum.icns"
+PYPKG="electrum"
+MAIN_SCRIPT="run_electrum"
+PROJECT_ROOT = "C:/electrum"
+ICONS_FILE=f"{PROJECT_ROOT}/{PYPKG}/gui/icons/electrum.ico"
 
+cmdline_name = os.environ.get("ELECTRUM_CMDLINE_NAME")
+if not cmdline_name:
+    raise Exception('no name')
 
-VERSION = os.environ.get("ELECTRUM_VERSION")
-if not VERSION:
-    raise Exception('no version')
-
-block_cipher = None
 
 # see https://github.com/pyinstaller/pyinstaller/issues/2005
 hiddenimports = []
@@ -30,9 +27,9 @@ hiddenimports += collect_submodules(f"{PYPKG}.plugins")
 
 binaries = []
 # Workaround for "Retro Look":
-binaries += [b for b in collect_dynamic_libs('PyQt6') if 'macstyle' in b[0]]
+binaries += [b for b in collect_dynamic_libs('PyQt6') if 'qwindowsvista' in b[0]]
 # add libsecp256k1, libusb, etc:
-binaries += [(f"{PROJECT_ROOT}/{PYPKG}/*.dylib", ".")]
+binaries += [(f"{PROJECT_ROOT}/{PYPKG}/*.dll", '.')]
 
 
 datas = [
@@ -105,39 +102,74 @@ for d in a.datas:
         break
 
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+# hotfix for #3171 (pre-Win10 binaries)
+a.binaries = [x for x in a.binaries if not x[1].lower().startswith(r'c:\windows')]
 
-exe = EXE(
+pyz = PYZ(a.pure)
+
+
+#####
+# "standalone" exe with all dependencies packed into it
+
+exe_standalone = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}.exe"),
+    debug=False,
+    strip=None,
+    upx=False,
+    icon=ICONS_FILE,
+    console=False)
+    # console=True makes an annoying black box pop up, but it does make Electrum output command line commands, with this turned off no output will be given but commands can still be used
+
+exe_portable = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas + [('is_portable', 'README.md', 'DATA')],
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}-portable.exe"),
+    debug=False,
+    strip=None,
+    upx=False,
+    icon=ICONS_FILE,
+    console=False)
+
+#####
+# exe and separate files that NSIS uses to build installer "setup" exe
+
+exe_inside_setup_noconsole = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name=MAIN_SCRIPT,
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}.exe"),
     debug=False,
-    strip=False,
-    upx=True,
+    strip=None,
+    upx=False,
     icon=ICONS_FILE,
-    console=False,
-    target_arch='x86_64',  # TODO investigate building 'universal2'
-)
+    console=False)
 
-app = BUNDLE(
-    exe,
+exe_inside_setup_console = EXE(
+    pyz,
+    a.scripts,
+    exclude_binaries=True,
+    name=os.path.join("build", "pyi.win32", PYPKG, f"{cmdline_name}-debug.exe"),
+    debug=False,
+    strip=None,
+    upx=False,
+    icon=ICONS_FILE,
+    console=True)
+
+coll = COLLECT(
+    exe_inside_setup_noconsole,
+    exe_inside_setup_console,
     a.binaries,
     a.zipfiles,
     a.datas,
-    version=VERSION,
-    name=PACKAGE_NAME,
+    strip=None,
+    upx=True,
+    debug=False,
     icon=ICONS_FILE,
-    bundle_identifier=None,
-    info_plist={
-        'NSHighResolutionCapable': 'True',
-        'NSSupportsAutomaticGraphicsSwitching': 'True',
-        'CFBundleURLTypes':
-            [{
-                'CFBundleURLName': 'bitcoin',
-                'CFBundleURLSchemes': ['bitcoin', 'lightning', ],
-            }],
-        'LSMinimumSystemVersion': '11',
-        'NSCameraUsageDescription': 'Electrum would like to access the camera to scan for QR codes',
-    },
-)
+    console=False,
+    name=os.path.join('dist', PYPKG))
