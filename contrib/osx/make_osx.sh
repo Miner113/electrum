@@ -35,6 +35,9 @@ which xcodebuild > /dev/null 2>&1 || fail "Please install xcode command line too
 info "install boost"
 brew install boost
 
+info "rm dist build"
+rm -rf dist/Electrum.app build/
+
 info "Installing Python $PYTHON_VERSION"
 PKG_FILE="python-${PYTHON_VERSION}-macos11.pkg"
 if [ ! -f "$CACHEDIR/$PKG_FILE" ]; then
