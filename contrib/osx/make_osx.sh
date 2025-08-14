@@ -233,6 +233,7 @@ info "Finished building unsigned dist/${PACKAGE}.app. This hash should be reprod
 find "dist/${PACKAGE}.app" -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256
 
 info "rm Electrum.dmg"
+hdiutil detach /Volumes/Electrum || true
 rm -f dist/Electrum.dmg
 
 info "Creating unsigned .DMG"
