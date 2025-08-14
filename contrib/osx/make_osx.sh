@@ -232,6 +232,9 @@ ELECTRUM_VERSION=$VERSION pyinstaller --noconfirm --clean contrib/osx/pyinstalle
 info "Finished building unsigned dist/${PACKAGE}.app. This hash should be reproducible:"
 find "dist/${PACKAGE}.app" -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256
 
+info "rm Electrum.dmg"
+rm -f dist/Electrum.dmg
+
 info "Creating unsigned .DMG"
 hdiutil create -fs HFS+ -volname $PACKAGE -srcfolder dist/$PACKAGE.app dist/electrum-$VERSION-unsigned.dmg || fail "Could not create .DMG"
 
