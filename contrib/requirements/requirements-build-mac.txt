@@ -15,14 +15,9 @@ packaging>=22.0
 # otherwise when installing hidapi, pip just downloads the latest Cython.
 # see https://github.com/spesmilo/electrum/issues/5859
 Cython>=0.27
-# Core Qt dependencies (macOS 11 compatible)
-PyQt6==6.6.1
-PyQt6-Qt6==6.6.1
-PyQt6-sip==13.6.0
 
 # Build tools
 sip==6.8.3
-PyQt-builder==1.15.4
 maturin==1.9.3
 
 # Specialized dependencies
