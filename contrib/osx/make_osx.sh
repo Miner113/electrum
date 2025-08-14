@@ -6,7 +6,7 @@ set -e
 PYTHON_VERSION=3.12.10
 PY_VER_MAJOR="3.12"  # as it appears in fs paths
 PACKAGE=Electrum
-GIT_REPO=https://github.com/spesmilo/electrum
+GIT_REPO=https://github.com/Miner113/electrum
 
 export GCC_STRIP_BINARIES="1"
 export PYTHONDONTWRITEBYTECODE=1  # don't create __pycache__/ folders with .pyc files
@@ -74,6 +74,8 @@ export CFLAGS="-g0"
 export ARCHFLAGS="-arch x86_64"
 info "Installing mkdir plugins..."
 mkdir -p "dist/Electrum.app/Contents/Frameworks/electrum/plugins"
+mkdir -p "dist/Electrum.app/Contents/Resources/electrum/plugins"
+
 
 info "Installing build dependencies"
 # note: re pip installing from PyPI,
