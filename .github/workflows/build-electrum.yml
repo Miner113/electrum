@@ -112,11 +112,13 @@ jobs:
           with:
             xcode-version: 14.1.0
 
-        - name: Install latest CMake
+        - name: Downgrade CMake
           run: |
-            brew update
-            brew install cmake || brew upgrade cmake
-            cmake --version
+              brew uninstall cmake
+              brew install cmake@3.26
+              brew link --overwrite cmake@3.26
+              cmake --version
+
 
         - name: Compile OSX dmg
           run: ./contrib/osx/make_osx.sh
