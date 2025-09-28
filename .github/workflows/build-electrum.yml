@@ -99,26 +99,37 @@ jobs:
           name: electrum-${{ github.sha }}-source-only-tarball
 
   macos:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12.10
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: 14.1.0
-      - name: Compile OSX dmg
-        run: ./contrib/osx/make_osx.sh
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-macos
-          path: dist/*.dmg
-          if-no-files-found: error
-          retention-days: 7
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electrum-${{ github.sha }}-macos
+      runs-on: macos-13
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v5
+          with:
+            python-version: 3.12.10
+
+        - uses: maxim-lobanov/setup-xcode@v1
+          with:
+            xcode-version: 14.1.0
+
+        - name: Install latest CMake
+          run: |
+            brew update
+            brew install cmake || brew upgrade cmake
+            cmake --version
+
+        - name: Compile OSX dmg
+          run: ./contrib/osx/make_osx.sh
+
+        - name: Upload Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: electrum-${{ github.sha }}-macos
+            path: dist/*.dmg
+            if-no-files-found: error
+            retention-days: 7
+
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            name: electrum-${{ github.sha }}-macos
