@@ -87,6 +87,7 @@ info "Installing build dependencies"
 #         and I am not quite sure how to break the circular dependence there (I guess we could introduce
 #         "requirements-build-base-base.txt" with just wheel in it...)
 echo "Installing maturin (or sip)..."
+python3 -m pip install --upgrade pip setuptools wheel
 python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-location \
     --cache-dir "$PIP_CACHE_DIR" maturin==1.9.3 sip==6.8.3 \
     || fail "Could not install maturin (or sip)"
