@@ -107,9 +107,12 @@ python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-l
 python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-location \
     --cache-dir "$PIP_CACHE_DIR" -Ir ./contrib/deterministic-build/requirements-build-base.txt \
     || fail "Could not install build dependencies (base)"
-python3 -m pip install --no-build-isolation --no-dependencies --no-binary :all: --no-warn-script-location \
-    --cache-dir "$PIP_CACHE_DIR" -Ir ./contrib/deterministic-build/requirements-build-mac.txt \
+# Allow using the binary wheel for qulacs to avoid invoking CMake for it
+python3 -m pip install --no-build-isolation --no-dependencies --no-warn-script-location \
+    --cache-dir "$PIP_CACHE_DIR" --no-binary=:all: --only-binary=qulacs \
+    -Ir ./contrib/deterministic-build/requirements-build-mac.txt \
     || fail "Could not install build dependencies (mac)"
+
 
 info "Installing some build-time deps for compilation..."
 brew install autoconf automake libtool gettext coreutils pkgconfig
