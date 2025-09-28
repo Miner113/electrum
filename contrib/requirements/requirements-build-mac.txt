@@ -2,7 +2,7 @@ pip
 setuptools
 wheel
 maturin==1.9.3
-qulacs==0.6.11
+
 # needed by pyinstaller:
 # fixme: ugly to have to duplicate this here from upstream
 macholib>=1.8
