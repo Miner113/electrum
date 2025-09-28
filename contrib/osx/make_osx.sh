@@ -35,6 +35,19 @@ which xcodebuild > /dev/null 2>&1 || fail "Please install xcode command line too
 info "install boost"
 brew install boost
 
+# --- BEGIN: fixes for building C/C++ extensions that use CMake (e.g. qulacs) ---
+info "ensure cmake and required build tools are present"
+brew install cmake
+
+# Use clang on macOS to avoid gcc/g++ being selected; make sure pip-built cmake projects
+# see a CMake policy telling it to accept modern CMake (workaround for old CMakeLists).
+# This passes flags to cmake when it is invoked by the Python build backend.
+export CC=clang
+export CXX=clang++
+export CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+# Optionally force single-arch build (you already set ARCHFLAGS), keep it explicit:
+export CMAKE_OSX_ARCHITECTURES="x86_64"
+
 info "rm dist build"
 rm -rf dist/Electrum.app build/
 
